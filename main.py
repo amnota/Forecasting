@@ -8,13 +8,13 @@ import uvicorn
 
 app = FastAPI()
 
-# ✅ CORS Configuration - อนุญาตให้ Frontend ใช้งาน API ได้
+# ✅ CORS Configuration - รองรับทั้ง Local และ Production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://demand-forecasting-ui.vercel.app"],  # ✅ ระบุเฉพาะ Frontend ของคุณ
+    allow_origins=["*"],  # ✅ fix cors
     allow_credentials=True,
-    allow_methods=["*"],  # อนุญาตทุก Method (GET, POST, PUT, DELETE)
-    allow_headers=["*"],
+    allow_methods=["*"],  # ✅ อนุญาตทุก Method (GET, POST, PUT, DELETE)
+    allow_headers=["*"],  # ✅ อนุญาตทุก Headers
 )
 
 # ✅ โหลดโมเดล Machine Learning
@@ -28,6 +28,7 @@ except Exception as e:
 # ✅ Route สำหรับ Homepage
 @app.get("/")
 def home():
+    print("🔹 GET / - API is running")
     return {"message": "Welcome to Demand Forecasting API!"}
 
 # ✅ API สำหรับทำ Forecast
@@ -36,8 +37,11 @@ async def forecast(file: UploadFile = File(...)):
     """
     อัปโหลดไฟล์ CSV และทำการพยากรณ์ยอดขาย
     """
+    print("🔹 POST /forecast/ - File received:", file.filename)
+
     df, error = await read_file(file)
     if error:
+        print("⚠️ Error reading file:", error)
         raise HTTPException(status_code=400, detail=error)
 
     df.dropna(inplace=True)
@@ -47,10 +51,12 @@ async def forecast(file: UploadFile = File(...)):
     missing_columns = [col for col in required_columns if col not in df.columns]
 
     if missing_columns:
+        print(f"⚠️ Missing columns: {missing_columns}")
         raise HTTPException(status_code=400, detail=f"CSV file ต้องมีคอลัมน์ {missing_columns}")
 
     # ✅ ตรวจสอบว่าโมเดลโหลดสำเร็จหรือไม่
     if model is None:
+        print("⚠️ Model is not loaded")
         raise HTTPException(status_code=500, detail="Model is not loaded. Please check deployment.")
 
     # ✅ ทำการพยากรณ์ยอดขาย
@@ -69,22 +75,24 @@ async def forecast(file: UploadFile = File(...)):
             overstock_risk = None
             understock_risk = None
 
-        return {
+        response = {
             "predictions": df['forecast_sales'].tolist(),
             "forecast_accuracy": forecast_accuracy,
             "overstock_risk": overstock_risk,
             "understock_risk": understock_risk
         }
 
+        print("✅ Prediction Success:", response)
+        return response
+
     except Exception as e:
+        print(f"⚠️ Prediction failed: {e}")
         raise HTTPException(status_code=500, detail=f"Prediction failed: {e}")
 
 # ✅ API สำหรับ Dashboard Summary
 @app.get("/dashboard/")
 def get_dashboard_data():
-    """
-    คืนค่าข้อมูลสรุปของยอดขาย
-    """
+    print("🔹 GET /dashboard/ - Returning summary data")
     return {
         "total_sale_revenue": 125000,
         "total_quantity_sold": 1500,
@@ -96,9 +104,7 @@ def get_dashboard_data():
 # ✅ API สำหรับเปรียบเทียบ Demand
 @app.get("/demand_comparison/")
 def get_demand_comparison():
-    """
-    คืนค่าการเปรียบเทียบ Demand ของสินค้าต่าง ๆ
-    """
+    print("🔹 GET /demand_comparison/ - Returning demand data")
     return {
         "products": [
             {"name": "Product A", "actual": 1200, "forecast": 1000, "difference": "+200", "risk": "Medium"},

@@ -81,3 +81,4 @@ def get_demand_comparison():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+

@@ -1,6 +1,1 @@
-uvicorn
-fastapi
-python-multipart
-scikit-learn
-pandas
-joblib
+

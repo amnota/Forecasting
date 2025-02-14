@@ -56,14 +56,18 @@ async def forecast(file: UploadFile = File(...)):
             "data": df.to_dict(orient="list"),
             "forecast_accuracy": 92,
             "overstock_risk": 15,
-            "understock_risk": 8
+            "understock_risk": 8,
+            "total_demand": sum(df["forecast_sales"]),
+            "active_products": len(df),
+            "customer_base": 1200,
+            "predicted_stock_needed": int(sum(df["forecast_sales"]) * 0.8)
         }
 
         return {
             "predictions": df["forecast_sales"].tolist(),
-            "forecast_accuracy": 92,
-            "overstock_risk": 15,
-            "understock_risk": 8
+            "forecast_accuracy": uploaded_data_cache["forecast_accuracy"],
+            "overstock_risk": uploaded_data_cache["overstock_risk"],
+            "understock_risk": uploaded_data_cache["understock_risk"]
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction failed: {e}")
@@ -72,7 +76,12 @@ async def forecast(file: UploadFile = File(...)):
 @app.get("/forecast/")
 def get_forecast():
     if not uploaded_data_cache:
-        raise HTTPException(status_code=404, detail="No forecast data available")
+        return {
+            "predictions": [],
+            "forecast_accuracy": "N/A",
+            "overstock_risk": "N/A",
+            "understock_risk": "N/A"
+        }
     
     return {
         "predictions": uploaded_data_cache["data"]["forecast_sales"],
@@ -93,7 +102,11 @@ def get_dashboard_data():
             "stock_utilization_rate": 0,
             "forecast_accuracy": "N/A",
             "overstock_risk": "N/A",
-            "understock_risk": "N/A"
+            "understock_risk": "N/A",
+            "total_demand": "N/A",
+            "active_products": "N/A",
+            "customer_base": "N/A",
+            "predicted_stock_needed": "N/A"
         }
 
     return {
@@ -104,7 +117,11 @@ def get_dashboard_data():
         "stock_utilization_rate": 85,
         "forecast_accuracy": uploaded_data_cache["forecast_accuracy"],
         "overstock_risk": uploaded_data_cache["overstock_risk"],
-        "understock_risk": uploaded_data_cache["understock_risk"]
+        "understock_risk": uploaded_data_cache["understock_risk"],
+        "total_demand": uploaded_data_cache["total_demand"],
+        "active_products": uploaded_data_cache["active_products"],
+        "customer_base": uploaded_data_cache["customer_base"],
+        "predicted_stock_needed": uploaded_data_cache["predicted_stock_needed"]
     }
 
 # ✅ Sales Trends API

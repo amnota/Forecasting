@@ -31,7 +31,7 @@ uploaded_data_cache = None
 def home():
     return {"message": "Welcome to Demand Forecasting API!"}
 
-# ✅ Forecast API - Upload CSV and Predict
+# ✅ Forecast Processing Function
 def process_forecast_data(df):
     required_columns = ['past_sales', 'day_of_week', 'month', 'promotions', 'holidays', 'stock_level', 'customer_traffic']
     
@@ -43,13 +43,21 @@ def process_forecast_data(df):
     df["forecast_sales"] = predictions
     return df
 
+# ✅ Forecast API (POST - Upload & Predict)
 @app.post("/forecast/")
 async def forecast(file: UploadFile = File(...)):
     global uploaded_data_cache
     try:
         df = pd.read_csv(file.file)
         df = process_forecast_data(df)
-        uploaded_data_cache = df.to_dict(orient="list")
+        
+        # ✅ Store data in cache
+        uploaded_data_cache = {
+            "data": df.to_dict(orient="list"),
+            "forecast_accuracy": 92,
+            "overstock_risk": 15,
+            "understock_risk": 8
+        }
 
         return {
             "predictions": df["forecast_sales"].tolist(),
@@ -60,6 +68,19 @@ async def forecast(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction failed: {e}")
 
+# ✅ Forecast API (GET - Retrieve Cached Forecast Data)
+@app.get("/forecast/")
+def get_forecast():
+    if not uploaded_data_cache:
+        raise HTTPException(status_code=404, detail="No forecast data available")
+    
+    return {
+        "predictions": uploaded_data_cache["data"]["forecast_sales"],
+        "forecast_accuracy": uploaded_data_cache["forecast_accuracy"],
+        "overstock_risk": uploaded_data_cache["overstock_risk"],
+        "understock_risk": uploaded_data_cache["understock_risk"]
+    }
+
 # ✅ Dashboard API
 @app.get("/dashboard/")
 def get_dashboard_data():
@@ -69,14 +90,21 @@ def get_dashboard_data():
             "total_quantity_sold": "N/A",
             "best_selling_product": "N/A",
             "least_selling_product": "N/A",
-            "stock_utilization_rate": 0
+            "stock_utilization_rate": 0,
+            "forecast_accuracy": "N/A",
+            "overstock_risk": "N/A",
+            "understock_risk": "N/A"
         }
+
     return {
-        "total_sale_revenue": sum(uploaded_data_cache["past_sales"]),
-        "total_quantity_sold": len(uploaded_data_cache["past_sales"]),
+        "total_sale_revenue": sum(uploaded_data_cache["data"]["past_sales"]),
+        "total_quantity_sold": len(uploaded_data_cache["data"]["past_sales"]),
         "best_selling_product": "Product A",
         "least_selling_product": "Product Z",
-        "stock_utilization_rate": 85
+        "stock_utilization_rate": 85,
+        "forecast_accuracy": uploaded_data_cache["forecast_accuracy"],
+        "overstock_risk": uploaded_data_cache["overstock_risk"],
+        "understock_risk": uploaded_data_cache["understock_risk"]
     }
 
 # ✅ Sales Trends API
@@ -87,7 +115,7 @@ def get_sales_trends():
     
     return [
         {"date": f"2024-02-{i+1:02d}", "sales": actual, "forecast": forecast}
-        for i, (actual, forecast) in enumerate(zip(uploaded_data_cache["past_sales"], uploaded_data_cache["forecast_sales"]))
+        for i, (actual, forecast) in enumerate(zip(uploaded_data_cache["data"]["past_sales"], uploaded_data_cache["data"]["forecast_sales"]))
     ]
 
 # ✅ Demand Comparison API
@@ -104,7 +132,7 @@ def get_demand_comparison():
             "difference": actual - forecast,
             "risk": "Low" if abs(actual - forecast) < 100 else "High"
         }
-        for i, (actual, forecast) in enumerate(zip(uploaded_data_cache["past_sales"], uploaded_data_cache["forecast_sales"]))
+        for i, (actual, forecast) in enumerate(zip(uploaded_data_cache["data"]["past_sales"], uploaded_data_cache["data"]["forecast_sales"]))
     ]
     return {"products": products}
 

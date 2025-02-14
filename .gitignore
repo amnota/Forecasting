@@ -1,3 +1,5 @@
 venv/
 __pycache__/
 *.pyc
+uploaded_data.json
+uploaded_data/

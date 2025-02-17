@@ -31,16 +31,32 @@ uploaded_data_cache = None
 def home():
     return {"message": "Welcome to Demand Forecasting API!"}
 
-# ✅ Forecast Processing Function
 def process_forecast_data(df):
     required_columns = ['past_sales', 'day_of_week', 'month', 'promotions', 'holidays', 'stock_level', 'customer_traffic']
     
+    # 🛑 เช็คว่ามีคอลัมน์หายไปหรือไม่
     missing_columns = [col for col in required_columns if col not in df.columns]
     if missing_columns:
         raise HTTPException(status_code=400, detail=f"Missing columns: {missing_columns}")
-    
-    predictions = model.predict(df[required_columns]) if model else [0] * len(df)
+
+    # ✅ Cleaning Data
+    df = df[required_columns]  # เลือกเฉพาะคอลัมน์ที่ต้องใช้
+    df.dropna(inplace=True)  # ลบ Missing Values
+    df.drop_duplicates(inplace=True)  # ลบข้อมูลซ้ำ
+
+    # ✅ แปลงประเภทข้อมูลให้ถูกต้อง
+    df["past_sales"] = df["past_sales"].astype(float)
+    df["day_of_week"] = df["day_of_week"].astype(int)
+    df["month"] = df["month"].astype(int)
+    df["promotions"] = df["promotions"].astype(int)
+    df["holidays"] = df["holidays"].astype(int)
+    df["stock_level"] = df["stock_level"].astype(float)
+    df["customer_traffic"] = df["customer_traffic"].astype(float)
+
+    # ✅ ทำนายด้วยโมเดล (ถ้ามีโมเดล)
+    predictions = model.predict(df) if model else [0] * len(df)
     df["forecast_sales"] = predictions
+    
     return df
 
 # ✅ Forecast API (POST - Upload & Predict)
